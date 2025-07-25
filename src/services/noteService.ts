@@ -20,7 +20,6 @@ const axiosInstance = axios.create({
   },
 });
 
-// 🔁 GET notes
 export async function fetchNotes(params: {
   query: string;
   page: number;
@@ -45,7 +44,7 @@ export async function createNote(note: NewNote): Promise<Note> {
   return res.data;
 }
 
-export default function useCreateNote() {
+export function useCreateNote() {
   const queryClient = useQueryClient();
 
   return useMutation<Note, Error, NewNote>({
@@ -57,7 +56,6 @@ export default function useCreateNote() {
   });
 }
 
-// ❌ DELETE note
 export async function deleteNote(id: number): Promise<Note> {
   const res = await axiosInstance.delete<Note>(`/${id}`);
   return res.data;

@@ -1,11 +1,12 @@
-import { Formik, Form, Field, ErrorMessage, FormikHelpers } from "formik";
+import { Formik, Form, Field, ErrorMessage } from "formik";
 import * as Yup from "yup";
+import { useQueryClient } from "@tanstack/react-query";
+import toast from "react-hot-toast";
 import css from "./NoteForm.module.css";
-import { NewNote } from "../../services/noteService";
+import { NewNote, useCreateNote } from "../../services/noteService";
 
 interface NoteFormProps {
   onClose: () => void;
-  onSubmit: (values: NewNote, actions: FormikHelpers<NewNote>) => void;
 }
 
 const initialValues: NewNote = {
@@ -23,9 +24,31 @@ const validationSchema = Yup.object({
   tag: Yup.string().oneOf(["Todo", "Work", "Personal", "Meeting", "Shopping"], "Invalid tag").required("Required"),
 });
 
-export default function NoteForm({ onClose, onSubmit }: NoteFormProps) {
+export default function NoteForm({ onClose }: NoteFormProps) {
+  const queryClient = useQueryClient();
+  const createMutation = useCreateNote();
+
+  const handleSubmit = (
+    values: NewNote,
+    { setSubmitting, resetForm }: { setSubmitting: (b: boolean) => void; resetForm: () => void }
+  ) => {
+    createMutation.mutate(values, {
+      onSuccess: () => {
+        toast.success("Нотатку створено.");
+        queryClient.invalidateQueries({ queryKey: ["notes"] });
+        resetForm();
+        setSubmitting(false);
+        onClose();
+      },
+      onError: () => {
+        toast.error("Не вдалося створити нотатку.");
+        setSubmitting(false);
+      },
+    });
+  };
+
   return (
-    <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={onSubmit}>
+    <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit}>
       {({ isSubmitting, isValid }) => (
         <Form className={css.form}>
           <div className={css.formGroup}>
@@ -53,11 +76,11 @@ export default function NoteForm({ onClose, onSubmit }: NoteFormProps) {
           </div>
 
           <div className={css.actions}>
-            <button type="button" className={css.cancelButton} onClick={onClose}>
+            <button type="button" className={css.cancelButton} onClick={onClose} disabled={isSubmitting}>
               Cancel
             </button>
             <button type="submit" className={css.submitButton} disabled={isSubmitting || !isValid}>
-              Create note
+              {isSubmitting ? "Creating..." : "Create note"}
             </button>
           </div>
         </Form>
