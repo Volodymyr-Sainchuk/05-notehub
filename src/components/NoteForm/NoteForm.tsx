@@ -5,7 +5,7 @@ import { NewNote } from "../../services/noteService";
 
 interface NoteFormProps {
   onClose: () => void;
-  onSubmit?: (values: NewNote) => void;
+  onSubmit: (values: NewNote, actions: FormikHelpers<NewNote>) => void;
 }
 
 const initialValues: NewNote = {
@@ -19,20 +19,13 @@ const validationSchema = Yup.object({
     .min(3, "Must be at least 3 characters")
     .max(50, "Must be at most 50 characters")
     .required("Required"),
-  content: Yup.string().max(500, "Must be at most 500 characters").notRequired(),
+  content: Yup.string().max(500, "Must be at most 500 characters"),
   tag: Yup.string().oneOf(["Todo", "Work", "Personal", "Meeting", "Shopping"], "Invalid tag").required("Required"),
 });
 
 export default function NoteForm({ onClose, onSubmit }: NoteFormProps) {
-  const handleSubmit = (values: NewNote, actions: FormikHelpers<NewNote>) => {
-    onSubmit?.(values);
-    actions.setSubmitting(false);
-    actions.resetForm();
-    onClose();
-  };
-
   return (
-    <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={handleSubmit}>
+    <Formik initialValues={initialValues} validationSchema={validationSchema} onSubmit={onSubmit}>
       {({ isSubmitting, isValid }) => (
         <Form className={css.form}>
           <div className={css.formGroup}>

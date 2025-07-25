@@ -1,10 +1,26 @@
 import axios from "axios";
-import Note from "../types/note";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import type { FetchNotesResponse } from "../types/note";
+import type { Note } from "../types/note";
 
-export type NewNote = Omit<Note, "id">;
+export type NewNote = Omit<Note, "id" | "createdAt" | "updatedAt">;
 
+export interface FetchNotesResponse {
+  notes: Note[];
+  totalPages: number;
+}
+
+const API_BASE = "https://notehub-public.goit.study/api/notes";
+const token = import.meta.env.VITE_NOTEHUB_TOKEN;
+
+const axiosInstance = axios.create({
+  baseURL: API_BASE,
+  headers: {
+    Authorization: `Bearer ${token}`,
+    "Content-Type": "application/json",
+  },
+});
+
+// 🔁 GET notes
 export async function fetchNotes(params: {
   query: string;
   page: number;
@@ -12,45 +28,20 @@ export async function fetchNotes(params: {
 }): Promise<FetchNotesResponse> {
   const { query, page, perPage } = params;
 
-  const url = new URL("https://notehub-public.goit.study/api/notes");
-
-  if (query.trim()) {
-    url.searchParams.append("search", query);
-  }
-
-  url.searchParams.append("page", String(page));
-  url.searchParams.append("perPage", String(perPage));
-
-  const token = import.meta.env.VITE_NOTEHUB_TOKEN;
-
-  const res = await fetch(url.toString(), {
-    method: "GET",
-    mode: "cors",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${token}`,
+  const res = await axiosInstance.get<FetchNotesResponse>("", {
+    params: {
+      ...(query.trim() && { search: query }),
+      page,
+      perPage,
     },
   });
 
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to fetch notes: ${res.status} ${res.statusText} - ${errorText}`);
-  }
-
-  return res.json();
+  return res.data;
 }
 
+// ➕ POST note
 export async function createNote(note: NewNote): Promise<Note> {
-  const token = import.meta.env.VITE_NOTEHUB_TOKEN;
-  console.log("Token (POST):", token);
-
-  const res = await axios.post("https://notehub-public.goit.study/api/notes", note, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
-    },
-  });
-
+  const res = await axiosInstance.post<Note>("", note);
   return res.data;
 }
 
@@ -66,27 +57,16 @@ export default function useCreateNote() {
   });
 }
 
-export async function deleteNote(id: string): Promise<void> {
-  const token = import.meta.env.VITE_NOTEHUB_TOKEN;
-  console.log("Token (DELETE):", token);
-
-  const res = await fetch(`https://notehub-public.goit.study/api/notes/${id}`, {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  if (!res.ok) {
-    const errorText = await res.text();
-    throw new Error(`Failed to delete note: ${res.status} ${res.statusText} - ${errorText}`);
-  }
+// ❌ DELETE note
+export async function deleteNote(id: number): Promise<Note> {
+  const res = await axiosInstance.delete<Note>(`/${id}`);
+  return res.data;
 }
 
 export function useDeleteNote() {
   const queryClient = useQueryClient();
 
-  return useMutation<void, Error, string>({
+  return useMutation<Note, Error, number>({
     mutationFn: deleteNote,
     onSuccess: () => {
       console.log("Note deleted successfully");
